@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify 曲検索アプリ</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    input {
+      padding: 10px;
+      margin: 10px 0;
+      width: 80%;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .song-list {
+      margin-top: 20px;
+    }
+    .song-item {
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #f4f4f4;
+      display: flex;
+      align-items: center;
+    }
+    .song-item img {
+      width: 100px;
+      height: 100px;
+      margin-right: 20px;
+    }
+    .section-title {
+      margin-top: 30px;
+      font-size: 24px;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Spotify 曲検索</h1>
+  <div>
+    <input type="text" id="searchQuery" placeholder="曲名またはアーティスト名を入力" />
+    <button id="searchButton">検索</button>
+  </div>
+
+  <div id="songList" class="song-list"></div>
+
+  <script>
+    // アクセストークンを手動で設定します（これは一般的な方法ではありません。実際にはバックエンドで取得するべきです）
+    const accessToken = 'YOUR_SPOTIFY_ACCESS_TOKEN'; // ここにアクセストークンを設定
+
+    // 曲を検索して表示する関数
+    function searchTracks(query) {
+      fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        }
+      })
+      .then(response => response.json())
+      .then(data => displaySongs(data.tracks.items))
+      .catch(err => console.error('Error fetching data from Spotify API:', err));
+    }
+
+    // 曲をHTMLに表示する関数
+    function displaySongs(songs) {
+      const songListElement = document.getElementById('songList');
+      songListElement.innerHTML = '';  // 一度リストをクリア
+
+      if (songs.length === 0) {
+        songListElement.innerHTML = '<p>検索結果はありません。</p>';
+        return;
+      }
+
+      const albums = [];
+      const singles = [];
+
+      songs.forEach(song => {
+        const albumType = song.album.album_type;  // `album_type` を使ってシングルかアルバムかを判別
+        if (albumType === 'single') {
+          singles.push(song);
+        } else if (albumType === 'album' || albumType === 'compilation') {
+          albums.push(song);
+        }
+      });
+
+      // シングルの表示
+      if (singles.length > 0) {
+        const singleSection = document.createElement('div');
+        singleSection.classList.add('section-title');
+        singleSection.innerHTML = 'シングル';
+        songListElement.appendChild(singleSection);
+
+        singles.forEach(song => {
+          const songItem = createSongItem(song);
+          songListElement.appendChild(songItem);
+        });
+      }
+
+      // アルバムの表示
+      if (albums.length > 0) {
+        const albumSection = document.createElement('div');
+        albumSection.classList.add('section-title');
+        albumSection.innerHTML = 'アルバム';
+        songListElement.appendChild(albumSection);
+
+        albums.forEach(song => {
+          const songItem = createSongItem(song);
+          songListElement.appendChild(songItem);
+        });
+      }
+    }
+
+    // 曲アイテムを作成する関数
+    function createSongItem(song) {
+      const songItem = document.createElement('div');
+      songItem.classList.add('song-item');
+
+      const songName = song.name;
+      const artistName = song.artists.map(artist => artist.name).join(', ');
+      const albumName = song.album.name;
+      const songUrl = song.external_urls.spotify;
+      const albumImageUrl = song.album.images[0].url;  // 最初の画像を取得（高解像度）
+
+      songItem.innerHTML = `
+        <img src="${albumImageUrl}" alt="Album Art">
+        <div>
+          <h3><a href="${songUrl}" target="_blank">${songName}</a></h3>
+          <p>アーティスト: ${artistName}</p>
+          <p>アルバム: ${albumName}</p>
+        </div>
+      `;
+      
+      return songItem;
+    }
+
+    // 検索ボタンのクリックイベント
+    document.getElementById('searchButton').addEventListener('click', () => {
+      const query = document.getElementById('searchQuery').value;
+      if (query) {
+        searchTracks(query);
+      }
+    });
+
+    // Enterキーで検索できるようにする
+    document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const query = document.getElementById('searchQuery').value;
+        if (query) {
+          searchTracks(query);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
